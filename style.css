@@ -11,6 +11,12 @@
     --success: #10b981;
     --warning: #f59e0b;
     --error: #ef4444;
+    --accent: #8b5cf6; /* Violet */
+}
+
+/* Dark Theme (Default) */
+:root,
+[data-theme="dark"] {
     --bg-dark: #0f172a;
     --bg-card: #1e293b;
     --bg-card-hover: #334155;
@@ -18,11 +24,24 @@
     --text-secondary: #94a3b8;
     --border: #334155;
     --border-light: #475569;
+    --body-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Light Theme */
+[data-theme="light"] {
+    --bg-dark: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --border-light: #cbd5e1;
+    --body-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    background: var(--body-bg);
     color: var(--text-primary);
     min-height: 100vh;
     padding: 2rem;
@@ -3156,6 +3175,29 @@ body:has(.header) .container {
   .notice-content p {
     text-align: center;
   }
+}
+
+/* Blockchain Badges */
+.blockchain-header {
+  display: flex;
+  align-items: center;
+}
+
+.blockchain-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-left: 0.75rem;
+}
+
+.blockchain-badge.secondary {
+  background: transparent;
+  border: 1px solid var(--text-secondary);
+  color: var(--text-secondary);
 }
 
 /* Transaction Filters */
