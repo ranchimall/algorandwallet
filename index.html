@@ -1108,6 +1108,7 @@
         let totalPages = 1;
         let allTransactions = [];
         const ITEMS_PER_PAGE = 10;
+        let hasMoreTransactions = true;
 
         async function loadTransactions(reset = false) {
             if (!currentAlgoAddress) return;
@@ -1117,24 +1118,25 @@
                     allTransactions = [];
                     currentPage = 1;
                     txNextToken = null;
+                    hasMoreTransactions = true;
                 }
                 
-                // Load all available transactions
-                let hasMore = true;
-                while (hasMore && allTransactions.length < 100) { // Limit to 100 for performance
+                // Load only one batch of transactions
+                if (hasMoreTransactions) {
                     const result = await algoAPI.getTransactions(currentAlgoAddress, {
-                        limit: 50,
+                        limit: 10,
                         next: txNextToken
                     });
                     
                     allTransactions = [...allTransactions, ...result.transactions];
                     txNextToken = result.nextToken;
-                    hasMore = result.hasMore;
-                    
-                    if (!hasMore) break;
+                    hasMoreTransactions = result.hasMore;
                 }
                 
-                totalPages = Math.ceil(allTransactions.length / ITEMS_PER_PAGE) || 1;
+                totalPages = Math.ceil(allTransactions.length / ITEMS_PER_PAGE);
+                if (hasMoreTransactions) {
+                    totalPages++; // Add one more page to show "next" is available
+                }
                 displayCurrentPage();
                 
             } catch (error) {
@@ -1183,7 +1185,8 @@
             
             // Update button states
             document.getElementById('prev-page-btn').disabled = currentPage <= 1;
-            document.getElementById('next-page-btn').disabled = currentPage >= totalPages;
+            // Enable next button if we're not on last page OR if there are more transactions to load
+            document.getElementById('next-page-btn').disabled = currentPage >= totalPages && !hasMoreTransactions;
             
             paginationEl.style.display = filteredTransactions.length > 0 ? 'flex' : 'none';
         }
@@ -1195,8 +1198,13 @@
             }
         }
 
-        function nextPage() {
-            if (currentPage < totalPages) {
+        async function nextPage() {
+            // Check if we need to load more transactions
+            const neededTransactions = (currentPage + 1) * ITEMS_PER_PAGE;
+            if (neededTransactions > allTransactions.length && hasMoreTransactions) {
+                currentPage++;
+                await loadTransactions();
+            } else if (currentPage < totalPages) {
                 currentPage++;
                 displayCurrentPage();
             }
