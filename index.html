@@ -223,7 +223,7 @@
                   <div class="form-group">
                     <label for="tx-search-input"><i class="fas fa-wallet"></i> ALGO Address or Private Key</label>
                     <div class="input-with-actions">
-                      <input type="text" id="tx-search-input" class="form-input" placeholder="Enter ALGO address or private key (WIF/hex)" />
+                      <input type="text" id="tx-search-input" class="form-input" placeholder="Enter ALGO address or private key (ALGO/FLO/BTC)" />
                       <button type="button" class="input-action-btn clear-btn" onclick="clearInput('tx-search-input')">
                         <i class="fas fa-times"></i>
                       </button>
@@ -791,17 +791,15 @@
             // Validate input - reject addresses, only accept private keys
             const hexOnly = /^[0-9a-fA-F]+$/.test(privateKey);
             const isHexKey = hexOnly && (privateKey.length === 64 || privateKey.length === 128);
-            const isBase58Key = !hexOnly && privateKey.length >= 50;
+            const isWifKey = !hexOnly && !(/^[A-Z2-7]+$/.test(privateKey)) && privateKey.length >= 51 && privateKey.length <= 52;
             
-            // Check if it looks like an address (ALGO address is 58 chars, BTC/FLO addresses are shorter)
-            if (privateKey.length === 58 || (privateKey.length >= 25 && privateKey.length <= 35 && !isBase58Key)) {
-                showNotification('⚠️ Invalid private key format. Please enter a valid BTC/FLO/ALGO private key', 'error');
-                return;
-            }
-            
-            // Validate private key format
-            if (!isHexKey && !isBase58Key) {
-                showNotification('⚠️ Invalid private key format. Please enter a valid BTC/FLO/ALGO private key', 'error');
+            // Reject if it's not a valid private key format
+            if (!isHexKey && !isWifKey) {
+                if (/^[A-Z2-7]+$/.test(privateKey) && privateKey.length === 52) {
+                    showNotification('⚠️ This looks like a transaction ID, not a private key. Private keys cannot be recovered from transaction IDs.', 'error');
+                } else {
+                    showNotification('⚠️ Invalid private key format. Please enter a valid private key', 'error');
+                }
                 return;
             }
 
@@ -926,24 +924,43 @@
             let sourceInfo = null;
             
             try {
-                // Check if input is an address (58 chars) or private key (any format)
+                // Check if input is an address (58 chars) or private key (hex/WIF format)
                 if (input.length === 58) {
-                    // It's an ALGO address
+                    // It's an ALGO address - validate it contains only valid base32 characters
+                    const validAlgoChars = /^[A-Z2-7]+$/;
+                    if (!validAlgoChars.test(input)) {
+                        showNotification('⚠️ Invalid ALGO address format', 'warning');
+                        searchBtn.disabled = false;
+                        searchBtn.innerHTML = originalContent;
+                        return;
+                    }
                     address = input;
-                } else if (input.length >= 50) {
-                    // It's a private key (WIF or hex), derive the ALGO address
-                    const result = await algoCrypto.generateMultiChain(input);
-                    address = result.ALGO.address;
-                    sourceInfo = {
-                        privateKey: input,
-                        btcAddress: result.BTC.address,
-                        floAddress: result.FLO.address
-                    };
                 } else {
-                    showNotification('⚠️ Invalid format. Enter address or private key', 'warning');
-                    searchBtn.disabled = false;
-                    searchBtn.innerHTML = originalContent;
-                    return;
+                    // Check if it's a valid private key format
+                    const hexOnly = /^[0-9a-fA-F]+$/.test(input);
+                    const isHexKey = hexOnly && (input.length === 64 || input.length === 128);
+                    const isWifKey = !hexOnly && !(/^[A-Z2-7]+$/.test(input)) && input.length >= 51 && input.length <= 52;
+                    
+                    if (isHexKey || isWifKey) {
+                        // It's a private key (WIF or hex), derive the ALGO address
+                        const result = await algoCrypto.generateMultiChain(input);
+                        address = result.ALGO.address;
+                        sourceInfo = {
+                            privateKey: input,
+                            btcAddress: result.BTC.address,
+                            floAddress: result.FLO.address
+                        };
+                    } else if (/^[A-Z2-7]+$/.test(input) && input.length === 52) {
+                        showNotification('⚠️ This looks like a transaction ID. Please use "Transaction Hash" search instead', 'warning');
+                        searchBtn.disabled = false;
+                        searchBtn.innerHTML = originalContent;
+                        return;
+                    } else {
+                        showNotification('⚠️ Invalid format. Enter a valid ALGO address (58 chars) or private key ', 'warning');
+                        searchBtn.disabled = false;
+                        searchBtn.innerHTML = originalContent;
+                        return;
+                    }
                 }
                 
                 // Update URL with the address (whether directly entered or derived from private key)
@@ -1059,7 +1076,15 @@
         async function loadSendWalletInfo() {
             const privateKey = document.getElementById('send-privatekey').value.trim();
             
-            if (!privateKey || privateKey.length < 50) {
+            // Validate private key format
+            const hexOnly = /^[0-9a-fA-F]+$/.test(privateKey);
+            const isHexKey = hexOnly && (privateKey.length === 64 || privateKey.length === 128);
+            
+            // Check for WIF key (Base58: 51-52 chars, NOT Base32)
+            const isBase32 = /^[A-Z2-7]+$/.test(privateKey); // Transaction IDs are Base32
+            const isWifKey = !hexOnly && !isBase32 && privateKey.length >= 51 && privateKey.length <= 52;
+            
+            if (!isHexKey && !isWifKey) {
                 document.getElementById('send-wallet-info').style.display = 'none';
                 return;
             }
@@ -1430,8 +1455,20 @@
             const recipient = document.getElementById('send-recipient').value.trim();
             const amount = parseFloat(document.getElementById('send-amount').value);
             
-            if (!privateKey || privateKey.length < 50) {
-                showNotification('⚠️ Please enter a valid private key', 'warning');
+            // Validate private key format
+            const hexOnly = /^[0-9a-fA-F]+$/.test(privateKey);
+            const isHexKey = hexOnly && (privateKey.length === 64 || privateKey.length === 128);
+            
+            // Check for WIF key (Base58: 51-52 chars, NOT Base32)
+            const isBase32 = /^[A-Z2-7]+$/.test(privateKey); // Transaction IDs are Base32
+            const isWifKey = !hexOnly && !isBase32 && privateKey.length >= 51 && privateKey.length <= 52;
+            
+            if (!isHexKey && !isWifKey) {
+                if (isBase32 && privateKey.length === 52) {
+                    showNotification('⚠️ This looks like a transaction ID, not a private key. Please enter a valid private key.', 'warning');
+                } else {
+                    showNotification('⚠️ Invalid private key format. Please enter a valid private key', 'warning');
+                }
                 return;
             }
             if (!recipient || recipient.length !== 58) {
