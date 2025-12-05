@@ -394,7 +394,7 @@
                   <div class="form-group">
                     <label for="send-privatekey"><i class="fas fa-key"></i> Private Key (BTC/FLO/ALGO)</label>
                     <div class="input-with-actions">
-                      <input type="password" id="send-privatekey" class="form-input" placeholder="Enter BTC/FLO/ALGO private key" required onchange="loadSendWalletInfo()" />
+                      <input type="password" id="send-privatekey" class="form-input" placeholder="Enter BTC/FLO/ALGO private key" required oninput="loadSendWalletInfo()" />
                       <button type="button" class="input-action-btn password-toggle" onclick="toggleSendKeyVisibility()">
                         <i class="fas fa-eye"></i>
                       </button>
@@ -795,7 +795,7 @@
             
             // Check if it looks like an address (ALGO address is 58 chars, BTC/FLO addresses are shorter)
             if (privateKey.length === 58 || (privateKey.length >= 25 && privateKey.length <= 35 && !isBase58Key)) {
-                showNotification('⚠️ Addresses are not allowed. Please enter a BTC/FLO/ALGO private key', 'error');
+                showNotification('⚠️ Invalid private key format. Please enter a valid BTC/FLO/ALGO private key', 'error');
                 return;
             }
             
