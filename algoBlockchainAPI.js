@@ -54,19 +54,28 @@
     const data = await response.json();
     
     // Format transactions
-    const transactions = (data.transactions || []).map(tx => ({
-      id: tx.id,
-      type: tx['tx-type'],
-      roundTime: tx['round-time'],
-      confirmedRound: tx['confirmed-round'],
-      fee: tx.fee,
-      sender: tx.sender,
-      // Payment transaction details
-      receiver: tx['payment-transaction']?.receiver || null,
-      amount: tx['payment-transaction']?.amount || 0,
-      amountAlgo: (tx['payment-transaction']?.amount || 0) / 1000000,
-      note: tx.note ? atob(tx.note) : null
-    }));
+    const transactions = (data.transactions || []).map(tx => {
+      // Check for payment transaction or asset transfer
+      const paymentTx = tx['payment-transaction'];
+      const assetTx = tx['asset-transfer-transaction'];
+      
+      return {
+        id: tx.id,
+        type: tx['tx-type'],
+        roundTime: tx['round-time'],
+        confirmedRound: tx['confirmed-round'],
+        fee: tx.fee,
+        sender: tx.sender,
+        // Get receiver from payment or asset transfer
+        receiver: paymentTx?.receiver || assetTx?.receiver || null,
+        amount: paymentTx?.amount || 0,
+        amountAlgo: (paymentTx?.amount || 0) / 1000000,
+        // Asset transfer details
+        assetId: assetTx?.['asset-id'] || null,
+        assetAmount: assetTx?.amount || 0,
+        note: tx.note ? atob(tx.note) : null
+      };
+    });
     
     return {
       transactions,
@@ -154,6 +163,10 @@
     const data = await response.json();
     const tx = data.transaction;
     
+    // Check for payment transaction or asset transfer
+    const paymentTx = tx['payment-transaction'];
+    const assetTx = tx['asset-transfer-transaction'];
+    
     return {
       id: tx.id,
       type: tx['tx-type'],
@@ -161,9 +174,13 @@
       confirmedRound: tx['confirmed-round'],
       fee: tx.fee,
       sender: tx.sender,
-      receiver: tx['payment-transaction']?.receiver || null,
-      amount: tx['payment-transaction']?.amount || 0,
-      amountAlgo: (tx['payment-transaction']?.amount || 0) / 1000000,
+      // Get receiver from payment or asset transfer
+      receiver: paymentTx?.receiver || assetTx?.receiver || null,
+      amount: paymentTx?.amount || 0,
+      amountAlgo: (paymentTx?.amount || 0) / 1000000,
+      // Asset transfer details
+      assetId: assetTx?.['asset-id'] || null,
+      assetAmount: assetTx?.amount || 0,
       note: tx.note ? atob(tx.note) : null
     };
   };
